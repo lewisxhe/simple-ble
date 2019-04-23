@@ -88,7 +88,7 @@ class DeviceServerCallbacks: public BLEServerCallbacks
     }
 };
 
-
+#include <soc/rtc.h>
 void setup()
 {
     Serial.begin(115200);
@@ -96,6 +96,8 @@ void setup()
 
     pinMode(LED_PIN, OUTPUT);
     digitalWrite(LED_PIN, HIGH);
+
+    // rtc_clk_cpu_freq_set(RTC_CPU_FREQ_160M);
 
     BLEDevice::init("BLE Testing");
     BLEServer *pServer = BLEDevice::createServer();
@@ -139,7 +141,7 @@ void setup()
 
     // BLEAdvertising *pAdvertising = pServer->getAdvertising();  // this still is working for backward compatibility
     BLEAdvertising *pAdvertising = BLEDevice::getAdvertising();
-    pAdvertising->addServiceUUID(SENSOR_SERVICE_UUID);
+    pAdvertising->addServiceUUID(CTRL_SERVICE_UUID);
     pAdvertising->setScanResponse(true);
     pAdvertising->setMinPreferred(0x06);  // functions that help with iPhone connections issue
     pAdvertising->setMinPreferred(0x12);
@@ -152,15 +154,16 @@ void loop()
 {
     if (deviceConnected) {
         if (enableNotify) {
+            Serial.println("Send Notify");
             *(float *)&(sensorArray[0]) = dht.readHumidity();
             *(float *)&(sensorArray[4]) = dht.readTemperature();
-            *(int *)&(sensorArray[9]) = map(analogRead(ADC_PIN), 0, 4096, 100, 0);
-            pSensorCharacteristic->setValue((uint8_t *)sensorArray, sizeof(sensorArray) / sizeof(sensorArray[0]));
-            pSensorCharacteristic->notify();
+            *(int *)&(sensorArray[8]) = map(analogRead(ADC_PIN), 0, 4096, 100, 0);
+            if (!isnan(*(float *) & (sensorArray[0])) && !isnan(*(float *) & (sensorArray[4])) ) {
+                pSensorCharacteristic->setValue((uint8_t *)sensorArray, sizeof(sensorArray) / sizeof(sensorArray[0]));
+                pSensorCharacteristic->notify();
+            }
         }
     }
-
     // esp_light_sleep_start();
-
     delay(1000);
 }
